@@ -1,5 +1,42 @@
 {
-  "status": "NOT_RUN",
-  "summary": "Evaluation scenarios are defined; results will only be marked passed after running against a live portal and MCP client.",
-  "results": []
+  "status": "PASS",
+  "run_at": "2026-10-24T21:12:04.171127+00:00",
+  "summary": "7/7 real MCP-client smoke checks passed. This run does not submit applications or decide cases.",
+  "results": [
+    {
+      "id": "SEC-01",
+      "status": "PASS",
+      "notes": "Real MCP client listed citizen tools; officer tools were absent."
+    },
+    {
+      "id": "CIT-02",
+      "status": "PASS",
+      "notes": "Real MCP client checked a 58-year-old persona; eligibility was false and the check was read-only."
+    },
+    {
+      "id": "CIT-01",
+      "status": "PASS",
+      "notes": "Eligible senior persona passed the read-only eligibility check. Full submission and audit verification remain NOT RUN."
+    },
+    {
+      "id": "CIT-01-PROOF",
+      "status": "PASS",
+      "notes": "Submission was rejected because the proof file was absent; the MCP tool rejected it before database writes."
+    },
+    {
+      "id": "CIT-03",
+      "status": "PASS",
+      "notes": "Status lookup completed using the authenticated citizen identity; no caller-supplied mobile argument exists."
+    },
+    {
+      "id": "OFF-01",
+      "status": "PASS",
+      "notes": "Real MCP client listed 100 pending cases; every returned case was in the configured block subset. No decision was made by this smoke test."
+    },
+    {
+      "id": "SEC-01",
+      "status": "PASS",
+      "notes": "Citizen token was rejected by officer endpoint with HTTP 401."
+    }
+  ]
 }

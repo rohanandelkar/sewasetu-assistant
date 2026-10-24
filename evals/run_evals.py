@@ -58,6 +58,53 @@ async def run():
     assert underage.get("eligible") is False, f"Expected under-age applicant to be ineligible; got {underage}"
     results.append({"id":"CIT-02","status":"PASS","notes":"Real MCP client checked a 58-year-old persona; eligibility was false and the check was read-only."})
 
+    # CIT-01: eligible senior citizen; eligibility check must be read-only.
+    senior = await client_call(
+        CITIZEN_URL,
+        CITIZEN_TOKEN,
+        "check_eligibility",
+        {"date_of_birth": "01/01/1956", "block": "Sonari"},
+    )
+    assert senior.get("eligible") is True, (
+        f"Expected eligible senior persona; got {senior}"
+    )
+    results.append({
+        "id": "CIT-01",
+        "status": "PASS",
+        "notes": "Eligible senior persona passed the read-only eligibility check. "
+                 "Full submission and audit verification remain NOT RUN.",
+    })
+
+    # Missing proof must be rejected before any database write.
+    missing_proof = await client_call(
+        CITIZEN_URL,
+        CITIZEN_TOKEN,
+        "submit_application",
+        {
+            "applicant_name": "Savitri Devi (TEST)",
+            "date_of_birth": "01/01/1956",
+            "village": "Sonari",
+            "block": "Sonari",
+            "bank_account": "123456789",
+            "ifsc": "TEST0001234",
+            "age_proof_document_path": "/var/sewasetu/uploads/eval_missing_proof.pdf",
+        },
+    )
+    assert missing_proof.get("submitted") is False, (
+        f"Expected submission rejection without proof; got {missing_proof}"
+    )
+    assert any(
+        "document reference was not found" in str(error).lower()
+        for error in missing_proof.get("errors", [])
+    ), f"Unexpected missing-proof rejection: {missing_proof}"
+    results.append({
+        "id": "CIT-01-PROOF",
+        "status": "PASS",
+        "notes": "Submission was rejected because the proof file was absent; "
+                 "the MCP tool rejected it before database writes.",
+    })
+
+
     # Current status lookup must derive mobile from the signed-in token, not arguments.
     status = await client_call(CITIZEN_URL, CITIZEN_TOKEN, "get_my_application_status", {})
     assert isinstance(status, dict) and "found" in status
