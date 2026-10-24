@@ -1,0 +1,5 @@
+{
+  "status": "NOT_RUN",
+  "summary": "Evaluation scenarios are defined; results will only be marked passed after running against a live portal and MCP client.",
+  "results": []
+}

@@ -4,10 +4,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends cron \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY requirements.txt .
+COPY app/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY app/ ./
+COPY evals/ ./evals/
 
 RUN mkdir -p /var/sewasetu/uploads /var/log/sewasetu \
     && crontab /app/deploy/crontab

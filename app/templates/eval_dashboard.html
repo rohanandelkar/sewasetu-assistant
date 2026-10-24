@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Evaluation Dashboard — Sewa Setu{% endblock %}
+{% block content %}
+<section class="container" style="max-width:1100px;margin:2rem auto;padding:0 1rem">
+  <h1>AI Assistant Evaluation Dashboard</h1>
+  <p>These personas test whether the assistant follows the same rules as the official portal. A scenario is not marked passed until a live MCP-client run and database check have been recorded.</p>
+  <div style="padding:1rem;border:1px solid #bbb;border-radius:8px;margin:1rem 0">
+    <strong>Evaluation status:</strong> {{ results.status }}<br>
+    {{ results.summary }}
+  </div>
+  <h2>Personas and expected portal outcomes</h2>
+  {% for p in personas %}
+  <article style="border:1px solid #ddd;border-radius:8px;padding:1rem;margin:1rem 0">
+    <h3>{{ p.id }} — {{ p.name }}</h3>
+    <p><strong>Age:</strong> {{ p.age if p.age is not none else 'Officer/security scenario' }} · <strong>Village:</strong> {{ p.village }} · <strong>Block:</strong> {{ p.block }}</p>
+    <p><strong>Speaking style:</strong> {{ p.voice }}</p>
+    <p><strong>Goal:</strong> {{ p.goal }}</p>
+    <p><strong>Expected database/security check:</strong> {{ p.expected }}</p>
+    {% set r = results_by_id.get(p.id) %}
+    <p><strong>Run result:</strong> {% if r %}{{ r.status }} — {{ r.notes }}{% else %}NOT RUN{% endif %}</p>
+  </article>
+  {% endfor %}
+  <h2>Recorded checks</h2>
+  {% if results.results %}
+  <table style="width:100%;border-collapse:collapse"><thead><tr><th align="left">Scenario</th><th align="left">Status</th><th align="left">Conversation / check</th></tr></thead><tbody>
+  {% for r in results.results %}<tr><td style="padding:.5rem;border-bottom:1px solid #ddd">{{ r.id }}</td><td style="padding:.5rem;border-bottom:1px solid #ddd">{{ r.status }}</td><td style="padding:.5rem;border-bottom:1px solid #ddd">{{ r.notes }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p>No live-client results have been recorded yet. This page deliberately does not claim unrun evaluations passed.</p>{% endif %}
+</section>
+{% endblock %}

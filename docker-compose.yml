@@ -4,19 +4,27 @@ services:
     environment:
       POSTGRES_DB: sewasetu
       POSTGRES_USER: sewasetu
-      POSTGRES_PASSWORD: sewasetu123
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-sewasetu123}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./app/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./seed/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
 
   app:
-    build: ./app
+    build:
+      context: .
+      dockerfile: app/Dockerfile
     ports:
       - "8000:8000"
     environment:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me-before-deploying}
+      SECRET_KEY: ${SECRET_KEY:-local-development-change-me}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sewasetu
+      DB_USER: sewasetu
+      DB_PASSWORD: ${DB_PASSWORD:-sewasetu123}
       # the address at which people reach this portal; stamped into sign-in tokens and
       # discovery documents, so it must be the public one when deployed
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
@@ -26,9 +34,12 @@ services:
     volumes:
       - uploads:/var/sewasetu/uploads
       - applogs:/var/log/sewasetu
+      - ./evals:/app/evals
 
   scheduler:
-    build: ./app
+    build:
+      context: .
+      dockerfile: app/Dockerfile
     # Run the deemed-approval job once at startup (so a freshly restored
     # database is brought up to date), then hand over to cron for the nightly run.
     command: ["sh", "-c", "until python /app/scripts/deemed_approval.py; do sleep 5; done; exec cron -f"]
@@ -43,6 +54,56 @@ services:
     # users via the app at /__gateway/ (so no second host port is needed)
     expose:
       - "8025"
+
+  citizen-mcp:
+    build:
+      context: .
+      dockerfile: mcp/Dockerfile
+    environment:
+      MCP_ROLE: citizen
+      PORT: 8101
+      PORTAL_ISSUER: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      PORTAL_JWKS_URL: http://app:8000/.well-known/jwks.json
+      MCP_AUDIENCE: ${CITIZEN_MCP_PUBLIC_URL:-http://localhost:8101/mcp}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sewasetu
+      DB_USER: sewasetu
+      DB_PASSWORD: ${DB_PASSWORD:-sewasetu123}
+      MCP_ALLOWED_BLOCKS: ${MCP_ALLOWED_BLOCKS:-Sonari}
+    ports:
+      - "8101:8101"
+    volumes:
+      - uploads:/var/sewasetu/uploads
+      - ./evals:/srv/evals
+    depends_on:
+      - db
+      - app
+
+  officer-mcp:
+    build:
+      context: .
+      dockerfile: mcp/Dockerfile
+    environment:
+      MCP_ROLE: officer
+      PORT: 8102
+      PORTAL_ISSUER: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      PORTAL_JWKS_URL: http://app:8000/.well-known/jwks.json
+      MCP_AUDIENCE: ${OFFICER_MCP_PUBLIC_URL:-http://localhost:8102/mcp}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: sewasetu
+      DB_USER: sewasetu
+      DB_PASSWORD: ${DB_PASSWORD:-sewasetu123}
+      MCP_ALLOWED_BLOCKS: ${MCP_ALLOWED_BLOCKS:-Sonari}
+    ports:
+      - "8102:8102"
+    volumes:
+      - uploads:/var/sewasetu/uploads
+      - ./evals:/srv/evals
+    depends_on:
+      - db
+      - app
 
 volumes:
   pgdata:

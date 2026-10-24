@@ -9,6 +9,7 @@ Maintained in-house since 02/2026.
 
 import os
 import io
+import json
 import re
 import random
 import hashlib
@@ -70,11 +71,11 @@ except Exception:
 
 def get_db():
     return psycopg2.connect(
-        host=config.get("database", "host"),
-        port=config.get("database", "port"),
-        dbname=config.get("database", "name"),
-        user=config.get("database", "user"),
-        password=config.get("database", "password"),
+        host=os.environ.get("DB_HOST", config.get("database", "host")),
+        port=os.environ.get("DB_PORT", config.get("database", "port")),
+        dbname=os.environ.get("DB_NAME", config.get("database", "name")),
+        user=os.environ.get("DB_USER", config.get("database", "user")),
+        password=os.environ.get("DB_PASSWORD", config.get("database", "password")),
     )
 
 
@@ -668,6 +669,23 @@ def admin_approve(app_id):
 @app.route("/admin/reject/<int:app_id>", methods=["POST"])
 def admin_reject(app_id):
     return _admin_decide(app_id, "REJECTED", request.form.get("note", ""))
+
+
+@app.route("/eval-dashboard")
+def eval_dashboard():
+    """Public, honest view of the assistant's evaluation scenarios and recorded results."""
+    candidates = [os.path.join(BASE_DIR, "evals"), os.path.join(os.path.dirname(BASE_DIR), "evals")]
+    eval_dir = next((path for path in candidates if os.path.isdir(path)), candidates[0])
+    try:
+        with open(os.path.join(eval_dir, "personas.json"), encoding="utf-8") as f:
+            personas = json.load(f)
+        with open(os.path.join(eval_dir, "results.json"), encoding="utf-8") as f:
+            results = json.load(f)
+    except (OSError, ValueError):
+        personas, results = [], {"status": "UNAVAILABLE", "summary": "Evaluation files are not available.", "results": []}
+    results_by_id = {r.get("id"): r for r in results.get("results", [])}
+    return render_template("eval_dashboard.html", personas=personas, results=results,
+                           results_by_id=results_by_id)
 
 
 from oauth import oauth as _oauth_blueprint   # noqa: E402  (needs the definitions above)

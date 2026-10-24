@@ -81,3 +81,52 @@ portal, checks `aud` is its own canonical URL, and reads `scope`, `role` and `su
 
 Long-lived **program tokens** for unattended use (role officer) are issued by an
 administrator at `/admin/tokens`.
+
+## AI assistant MCP endpoints
+
+The project now includes two separately deployed streamable-HTTP MCP services:
+
+- Citizen endpoint: `http://localhost:8101/mcp` (citizen tools only)
+- Block officer endpoint: `http://localhost:8102/mcp` (officer tools only)
+- Evaluation dashboard: `http://localhost:8000/eval-dashboard`
+
+Start the full stack with `docker compose up --build`. For a public deployment, set
+`PUBLIC_BASE_URL`, `CITIZEN_MCP_PUBLIC_URL` (canonical endpoint URL ending in `/mcp`),
+`OFFICER_MCP_PUBLIC_URL`, `ADMIN_PASSWORD`, `SECRET_KEY`, and `DB_PASSWORD` in the
+environment before starting the services. Put the portal and both MCP endpoints behind
+HTTPS. Do not use the development defaults in a public deployment.
+
+OAuth authorization must request the endpoint's canonical URL as the `resource` value,
+so the access token audience matches the service. The services validate the portal's
+RS256 token signature using its JWKS, plus issuer, audience, expiry, role, scope, and
+subject shape. Citizen identity is taken only from the signed token; a tool caller cannot
+supply another mobile number. The officer endpoint is a separate process and exposes no
+citizen tools. Its jurisdiction defaults to `Sonari` (least privilege); set
+`MCP_ALLOWED_BLOCKS` to a comma-separated subset of the portal's supported blocks when
+widening jurisdiction is appropriate.
+
+Citizen application submission calls the portal's shared `validate_application()` and
+`create_application()` functions. The applicant must first upload age proof through the
+official portal; the MCP tool accepts only a real file path under the portal's configured
+upload directory. It does not fabricate a document, approve an application, or bypass the
+scheme deadline. Officer decisions require a reason and are limited to pending cases in
+the configured block subset; the portal status and audit log are updated transactionally.
+
+### Evaluation runner
+
+`evals/personas.json` describes the test personas and expected database/security outcomes.
+`evals/run_evals.py` is a real MCP-client smoke runner. After obtaining portal-authorized
+access tokens with the correct resource audiences, run:
+
+```bash
+CITIZEN_TOKEN='...' OFFICER_TOKEN='...' \
+CITIZEN_MCP_URL='http://localhost:8101/mcp' \
+OFFICER_MCP_URL='http://localhost:8102/mcp' \
+python evals/run_evals.py
+```
+
+The runner exercises eligibility, own-status lookup, tool separation, officer queue
+jurisdiction, and cross-role token rejection, then writes `evals/results.json`, which is
+shown by `/eval-dashboard`. It intentionally does not submit a real citizen application
+or make an officer decision. The dashboard says `NOT_RUN` until an actual run records
+results; never report unexecuted scenarios as passed.
